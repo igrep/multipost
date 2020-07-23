@@ -61,6 +61,7 @@ In addition, the posted article's URL on Qiita is written at the place spacified
 title: My ChangeLog for age 31.
 author: YAMAMOTO Yuji
 date: April 16, 2020
+qiita-tags: Tags Separated By Spaces
 canonical-url: https://qiita.com/your_qiita_id/items/article_id
 ...
 ---

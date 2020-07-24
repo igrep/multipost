@@ -4,6 +4,10 @@
 
 Tool to upload specified markdown files to Qiita.
 
+## Intallation
+
+Currently no way to install. Because this is not yet implemented!
+
 ## Example Usage
 
 ### Post a New Article

@@ -23,7 +23,7 @@ canonical-url:
 Happy birthday to me!
 ```
 
-Run the multipost command:
+Run the `multipost` command:
 
 ```bash
 $ multipost \
@@ -72,5 +72,15 @@ Happy birthday to me!
 ### Modify an Already Posted Article
 
 With the instructions above, we've published `article.md` on Qiita, and recorded the article's URL on `article.md`.  
-How can we update the article? The answer is simple: edit the contents (and possibly tags), then run `multipost` against `article.md` again!  
+How can we update the article? The answer is simple: edit the contents (and possibly tags), then run `multipost` with the same arguments again!  
 If the URL (extracted by the regex of the `--url-placeholder` option) is already written, `multipost` just updates the article on Qiita.
+
+```bash
+$ multipost \
+    --url-placeholder '^canonical-url:(.*)$' \
+    --title '^title:(.*)$' \
+    --tags '^qiita-tags:(.*)$' \
+    --metadata '^---.+---' \
+    --qiita-access-token=$QIITA_ACCESS_TOKEN \
+    article.md
+```

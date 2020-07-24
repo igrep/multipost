@@ -88,3 +88,12 @@ $ multipost \
     --qiita-access-token=$QIITA_ACCESS_TOKEN \
     article.md
 ```
+
+## Not-ToDos
+
+- Configure by environment variables/config files/etc.
+    - This command is recommended to use with a wrapper script. And IMO the wrapper script would be enough in almost any usecases of this command.
+- Overwrite the markdown file on your machine with the published markdown.
+    - This feature might be useful for example if you adapt some edit requests on Qiita. But currently I'm satisfied with the features above. Updating the article manually would suffice.
+- Save the markdown file(s) not on your machine.
+    - I don't need that feature. This tool is NOT a *synchronisation* tool, but a *posting* tool. So that feature is out of scope. I wouldn't accept such pull requests!

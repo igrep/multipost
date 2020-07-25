@@ -1,0 +1,70 @@
+cabal-version:       2.4
+name:                multipost
+version:             0.1.0.0
+synopsis:            CLI tool to upload markdown files to Qiita
+-- description:
+homepage:            https://github.com/igrep/multipost
+license:             Apache-2.0
+license-file:        LICENSE
+author:              YAMAMOTO Yuji
+maintainer:          whosekiteneverfly@gmail.com
+copyright:           2020 YAMAMOTO Yuji
+category:            Web
+build-type:          Simple
+extra-source-files:  README.md
+
+common common
+  build-depends:       base >= 4.7 && < 5
+                     , text
+  default-language:    Haskell2010
+
+common common-executable
+  build-depends:       multipost
+  ghc-options:         -threaded -rtsopts
+
+library
+  import:              common
+  hs-source-dirs:      src
+  exposed-modules:     Multipost
+                       Multipost.Types
+                       Multipost.UploadDestination.Qiita
+  other-modules:       Multipost.UploadDestination.Qiita.Types
+  build-depends:       aeson
+                     , deriveJsonNoPrefix
+                     , http-client-tls
+                     , servant
+                     , servant-client
+                     , regex
+
+executable multipost
+  import:              common, common-executable
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  build-depends:       hspec
+
+test-suite multipost-test
+  import:              common, common-executable
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  other-modules:       MultipostSpec
+  build-depends:       hspec
+                     , QuickCheck
+
+flag test-qiita
+  description: Build a CLI client for testing.
+  default:     False
+  manual:      True
+
+executable multipost-test-qiita
+  import:              common, common-executable
+  if flag(test-qiita)
+    buildable: True
+  else
+    buildable: False
+  hs-source-dirs:      app
+  main-is:             test-qiita.hs
+
+source-repository head
+  type:     git
+  location: https://github.com/igrep/multipost

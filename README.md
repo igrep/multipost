@@ -48,7 +48,7 @@ $ multipost \
     `#   NOTE: This regex is matched by block mode: '.' matches` \
     `#         any characters including newline characters.` \
     \
-    --qiita-access-token=$QIITA_ACCESS_TOKEN \
+    --qiita-access-token "$QIITA_ACCESS_TOKEN" \
     \
     article.md \
     `# ^ The target article. You can specify multiple articles.`
@@ -85,7 +85,7 @@ $ multipost \
     --title '^title:(.*)$' \
     --tags '^qiita-tags:(.*)$' \
     --metadata '^---.+---' \
-    --qiita-access-token=$QIITA_ACCESS_TOKEN \
+    --qiita-access-token "$QIITA_ACCESS_TOKEN" \
     article.md
 ```
 

@@ -5,6 +5,13 @@
 
 packages:
 - completed:
+    hackage: fakefs-0.2.0.1@sha256:c2e93489b575496e6157b83cefc6d19595976a9cdaa3be52eccb9a5f48bb1eec,1130
+    pantry-tree:
+      size: 373
+      sha256: 11d0ea2b9da84c1343ada6c11344fcf1878ee54d741761b7991fed438f3217ee
+  original:
+    hackage: fakefs-0.2.0.1@sha256:c2e93489b575496e6157b83cefc6d19595976a9cdaa3be52eccb9a5f48bb1eec,1130
+- completed:
     hackage: servant-client-0.17@sha256:433be65dd541b9a387eaaced22715a028ea846d72d141419c40ddf6fd5e3409b,4573
     pantry-tree:
       size: 1299

@@ -97,3 +97,9 @@ $ multipost \
     - This feature might be useful for example if you adapt some edit requests on Qiita. But currently I'm satisfied with the features above. Updating the article manually would suffice.
 - Save the markdown file(s) not on your machine.
     - I don't need that feature. This tool is NOT a *synchronisation* tool, but a *posting* tool. So that feature is out of scope. I wouldn't accept such pull requests!
+
+## (Perhaps) Frequently Asked Questions
+
+### Why is this named "multipost"? It doesn't actually post anywhere except Qiita.
+
+

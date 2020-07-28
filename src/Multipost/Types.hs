@@ -9,8 +9,8 @@ module Multipost.Types
   , ArticleId
   , PostResult
   , Env (..)
-  , ShownRe (..)
-  )where
+  , UserRegex
+  ) where
 
 
 import           Data.Aeson.DeriveNoPrefix               (deriveJsonNoTypeNamePrefix)
@@ -18,7 +18,6 @@ import qualified Data.Text                               as T
 import           Prelude                                 hiding (readFile,
                                                           writeFile)
 import           Servant.Client                          (ClientError)
-import           Text.RE.TDFA.Text                       (RE, reSource)
 
 import           Multipost.UploadDestination.Qiita.Types
 
@@ -32,18 +31,16 @@ data Article = Article
 $(deriveJsonNoTypeNamePrefix ''Article)
 
 
-newtype ShownRe = ShownRe { unShownRe :: RE }
-
-instance Show ShownRe where
-  show (ShownRe re) = "\"" ++ reSource re ++ "\""
+type UserRegex = T.Text
 
 
 data Arguments = Arguments
-  { urlPlaceholderPattern :: ShownRe
-  , titlePattern          :: ShownRe
-  , tagsPattern           :: ShownRe
-  , metadataPattern       :: ShownRe
+  { urlPlaceholderPattern :: UserRegex
+  , titlePattern          :: UserRegex
+  , tagsPattern           :: UserRegex
+  , metadataPattern       :: UserRegex
   , qiitaAccessToken      :: T.Text
+  , targetMarkdownPaths   :: [FilePath]
   } deriving Show
 
 
@@ -63,6 +60,6 @@ type PostResult = ItemResponse
 
 
 data UploadDestination m = UploadDestination
-  { postArticle  :: AccessToken -> Article -> m (Either ClientError PostResult)
-  , patchArticle :: AccessToken -> ArticleId -> Article -> m (Either ClientError ())
+  { postArticle  :: Article -> m (Either ClientError PostResult)
+  , patchArticle :: ArticleId -> Article -> m (Either ClientError ())
   }

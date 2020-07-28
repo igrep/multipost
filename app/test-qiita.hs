@@ -16,7 +16,7 @@ main = do
   hSetEcho stdin False
   accessToken <- T.getLine
 
-  qiita <- mkQiitaUploadDestination
+  qiita <- mkQiitaUploadDestination accessToken
   (command : left) <- getArgs
   case command of
       "items:post" -> do
@@ -28,7 +28,7 @@ main = do
               ]
             articleTitle = "Qiita APIテスト用新規投稿"
             article = Article { articleBody, articleTags, articleTitle }
-        print =<< postArticle qiita accessToken article
+        print =<< postArticle qiita article
       "items:patch" -> do
         let articleBody =
               "# Qiita APIテスト用記事（更新済み）の見出し\nQiita APIテスト用記事（更新済み）の本文"
@@ -39,6 +39,6 @@ main = do
             articleTitle = "Qiita APIテスト用記事（更新済み）"
             articleId = T.pack $ head left
             article = Article { articleBody, articleTags, articleTitle }
-        print =<< patchArticle qiita accessToken articleId article
+        print =<< patchArticle qiita articleId article
       other ->
         fail $ "Unknown command: " ++ show other

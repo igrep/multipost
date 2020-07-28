@@ -44,16 +44,16 @@ patchItem :: AuthorizationHeader -> ItemId -> PatchItemRequest -> ClientM ItemRe
 postItem :<|> patchItem = client api
 
 
-mkQiitaUploadDestination :: IO (UploadDestination IO)
-mkQiitaUploadDestination = do
+mkQiitaUploadDestination :: AccessToken -> IO (UploadDestination IO)
+mkQiitaUploadDestination accessToken = do
   clientEnv <- mkClientEnv <$> newTlsManager <*> parseBaseUrl "https://qiita.com/api/v2/"
   let run = (`runClientM` clientEnv)
 
-      postArticle accessToken Article { articleBody, articleTags, articleTitle } = do
+      postArticle Article { articleBody, articleTags, articleTitle } = do
         run . postItem ("Bearer " <> accessToken) $
           PostItemRequest articleBody articleTags articleTitle False
 
-      patchArticle accessToken articleId Article { articleBody, articleTags, articleTitle } =
+      patchArticle articleId Article { articleBody, articleTags, articleTitle } =
         run . void . patchItem ("Bearer " <> accessToken) articleId $
           PatchItemRequest articleBody articleTags articleTitle
 

@@ -1,18 +1,23 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Main where
 
-import qualified Data.Text.IO       as T
-import           Prelude            hiding (readFile, writeFile)
-import           System.Environment (getArgs)
+
+import qualified Data.Text.IO      as T
+import           Prelude           hiding (readFile, writeFile)
 
 import           Multipost
+import qualified Multipost.Options as Opt
+
 
 main :: IO ()
 main = do
-  qiitaUploadDestination <- mkQiitaUploadDestination
+  args <- Opt.fromArgs
+  qiita <- mkQiitaUploadDestination $ qiitaAccessToken args
   let env = Env
-        { qiita = qiitaUploadDestination
+        { qiita
         , logDebug = putStrLn
         , readFile = T.readFile
         , writeFile = T.writeFile
         }
-  mainWith env =<< getArgs
+  mainWith env args

@@ -27,12 +27,14 @@ library
   import:              common
   hs-source-dirs:      src
   exposed-modules:     Multipost
+                       Multipost.Options
                        Multipost.Types
                        Multipost.UploadDestination.Qiita
   other-modules:       Multipost.UploadDestination.Qiita.Types
   build-depends:       aeson
                      , deriveJsonNoPrefix
                      , http-client-tls
+                     , optparse-applicative
                      , servant
                      , servant-client
                      , regex

@@ -31,10 +31,13 @@ library
                        Multipost.Types
                        Multipost.UploadDestination.Qiita
   other-modules:       Multipost.UploadDestination.Qiita.Types
+                     , Multipost.Internal
   build-depends:       aeson
                      , deriveJsonNoPrefix
+                     , either-result
                      , http-client-tls
                      , optparse-applicative
+                     , safe-exceptions
                      , servant
                      , servant-client
                      , regex
@@ -53,7 +56,7 @@ test-suite multipost-test
   other-modules:       MultipostSpec
   build-depends:       hspec
                      , containers
-                     , fakefs
+                     , fakefs >= 0.3.0.0
                      , mtl
                      , nowdoc
 

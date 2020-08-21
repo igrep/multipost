@@ -5,12 +5,19 @@
 
 packages:
 - completed:
-    hackage: fakefs-0.2.0.1@sha256:c2e93489b575496e6157b83cefc6d19595976a9cdaa3be52eccb9a5f48bb1eec,1130
+    hackage: either-result-0.1.0.0@sha256:bf81c20f0ea9ec316c0d07bc4e1d95cfa0078f6017ae9ae0260b793166109b4f,1567
+    pantry-tree:
+      size: 375
+      sha256: ad44e1116f4e7c4995789c70b2b21c03f0c2a4c9e44cd01e6d7477d607990231
+  original:
+    hackage: either-result-0.1.0.0@sha256:bf81c20f0ea9ec316c0d07bc4e1d95cfa0078f6017ae9ae0260b793166109b4f,1567
+- completed:
+    hackage: fakefs-0.3.0.0@sha256:83ef3ac0d2a0b168c8fac54269c88c9e5cddf6a07f3bc5efe3fb44b234d64bd6,1164
     pantry-tree:
       size: 373
-      sha256: 11d0ea2b9da84c1343ada6c11344fcf1878ee54d741761b7991fed438f3217ee
+      sha256: 1d21d9a6ad9c6926d3430b3f3854b599bd4e6a4771029e534145ce3df330b42c
   original:
-    hackage: fakefs-0.2.0.1@sha256:c2e93489b575496e6157b83cefc6d19595976a9cdaa3be52eccb9a5f48bb1eec,1130
+    hackage: fakefs-0.3.0.0@sha256:83ef3ac0d2a0b168c8fac54269c88c9e5cddf6a07f3bc5efe3fb44b234d64bd6,1164
 - completed:
     hackage: servant-client-0.17@sha256:433be65dd541b9a387eaaced22715a028ea846d72d141419c40ddf6fd5e3409b,4573
     pantry-tree:
@@ -34,7 +41,7 @@ packages:
     hackage: servant-client-core-0.17@sha256:d64622d68d8a6934abc821171582d601a99ef0277f3d8b8ba9b483c2617e3df6,3577
 snapshots:
 - completed:
-    size: 513703
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/7/22.yaml
-    sha256: 91c0f4630ae3a80c1c757af88d2b7bfb5f85e4a7ff7eaee5a2d19396e2c8a761
-  original: nightly-2020-07-22
+    size: 523724
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/8/2.yaml
+    sha256: 11eb68ad07a271fe133c7df5ee5e811bbbd1c462c8b8c06c2aadfe1e10d442d4
+  original: nightly-2020-08-02

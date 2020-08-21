@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: nightly-2020-07-22
+resolver: nightly-2020-08-02
 allow-newer: true
 
 # User packages to be built.
@@ -41,7 +41,8 @@ packages:
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
 #
 extra-deps:
-- fakefs-0.2.0.1@sha256:c2e93489b575496e6157b83cefc6d19595976a9cdaa3be52eccb9a5f48bb1eec,1130
+- either-result-0.1.0.0@sha256:bf81c20f0ea9ec316c0d07bc4e1d95cfa0078f6017ae9ae0260b793166109b4f,1567
+- fakefs-0.3.0.0@sha256:83ef3ac0d2a0b168c8fac54269c88c9e5cddf6a07f3bc5efe3fb44b234d64bd6,1164
 - servant-client-0.17@sha256:433be65dd541b9a387eaaced22715a028ea846d72d141419c40ddf6fd5e3409b,4573
 - servant-0.17@sha256:e78734cb6b75c5d1e52e8f5e16bc3f557154a580bbde4932a7e1a6a90da7eb04,5029
 - servant-client-core-0.17@sha256:d64622d68d8a6934abc821171582d601a99ef0277f3d8b8ba9b483c2617e3df6,3577

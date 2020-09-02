@@ -31,14 +31,14 @@ Run the `multipost` command:
 
 ```bash
 $ multipost \
-    --url-placeholder '^canonical-url:\s*(.*)$' \
+    --url-placeholder '^canonical-url:(.*)$' \
     `# ^ Get the URL on Qiita of the article. If the first captured group is blank or` \
     `#   just "qiita", the article is treated as not posted yet.` \
     \
-    --title '^title:\s*(.*)$' \
+    --title '^title:(.*)$' \
     `# ^ The first captured group is the title of the post.` \
     \
-    --tags '^qiita-tags:\s*(.*)$' \
+    --tags '^qiita-tags:(.*)$' \
     `# ^ The first captured group is the tags of the post.` \
     `#   NOTE: "tags" in Hakyll are separated by comma, so I specified it` \
     `#         in the separate field "qiita-tags".` \

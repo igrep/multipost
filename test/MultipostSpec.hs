@@ -75,8 +75,8 @@ testEnv = Env
 testArgumentsAgainst :: FilePath -> Arguments
 testArgumentsAgainst targetPath = Arguments
   { urlPlaceholderPattern = "^canonical-url:(.*)$"
-  , titlePattern = "^title:\\s*(.*)$"
-  , tagsPattern = "^qiita-tags:\\s*(.*)$"
+  , titlePattern = "^title:(.*)$"
+  , tagsPattern = "^qiita-tags:(.*)$"
   , metadataPattern = "^---\n.+\n---\n"
   , qiitaAccessToken = error "qiitaAccessToken should not be used in test"
   , targetMarkdownPaths = [targetPath]

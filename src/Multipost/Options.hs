@@ -1,5 +1,6 @@
-{-# LANGUAGE ApplicativeDo   #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ApplicativeDo     #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 
 module Multipost.Options
   ( fromArgs
@@ -15,14 +16,14 @@ import           Multipost.Types
 
 parser :: Parser Arguments
 parser = do
-  urlPlaceholderPattern <-
-    strOption (long "url-placeholder" <> metavar "REGEX")
-  titlePattern <-
-    strOption (long "title" <> metavar "REGEX")
-  tagsPattern <-
-    strOption (long "tags" <> metavar "REGEX")
-  metadataPattern <-
-    strOption (long "metadata" <> metavar "REGEX")
+  canonicalUrlKey <-
+    strOption (long "canonical-url" <> metavar "YAML_KEY") <|> pure "canonical-url"
+  titleKey <-
+    strOption (long "title" <> metavar "YAML_KEY") <|> pure "title"
+  tagsKey <-
+    strOption (long "tags" <> metavar "YAML_KEY") <|> pure "qiitaTags"
+  preprocessorsKey <-
+    strOption (long "qiita-preprocessors" <> metavar "YAML_KEY") <|> pure "qiita-preprocessors"
   qiitaAccessToken <-
     strOption (long "qiita-access-token" <> metavar "QIITA_ACCESS_TOKEN")
   targetMarkdownPaths <- many . strArgument $ metavar "FILES_TO_UPLOAD"

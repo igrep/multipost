@@ -18,7 +18,7 @@ import qualified Data.Map.Strict            as M
 import qualified Data.Text                  as T
 import           Test.FileSystem.Fake       (FileSystem, FileSystemT, readPath,
                                              runFileSystemT, writePath)
-import           Test.Hspec
+import           Test.Syd
 import           Text.Nowdoc                (nowdoc)
 
 import           Prelude                    hiding (readFile, writeFile)
@@ -29,7 +29,7 @@ import           Multipost
 
 
 main :: IO ()
-main = hspec spec
+main = sydTest spec
 
 
 type UploadDestinationState = M.Map ArticleId (Maybe Article)
@@ -58,7 +58,7 @@ testEnv = Env
   { qiita = UploadDestination { postArticle, patchArticle }
   , logDebug = traceM
   , readFile = readPath
-  , writeFile = \path -> writePath path
+  , writeFile = writePath
   }
  where
   postArticle article = do
@@ -74,11 +74,11 @@ testEnv = Env
 
 testArgumentsAgainst :: FilePath -> Arguments
 testArgumentsAgainst targetPath = Arguments
-  { urlPlaceholderPattern = "^canonical-url:(.*)$"
-  , titlePattern = "^title:(.*)$"
-  , tagsPattern = "^qiita-tags:(.*)$"
-  , metadataPattern = "^---\n.+\n---\n"
-  , qiitaAccessToken = error "qiitaAccessToken should not be used in test"
+  { canonicalUrlKey = "canonical-url"
+  , titleKey = "title"
+  , tagsKey = "qiita-tags"
+  , qiitaAccessToken = "qiitaAccessToken should not be used in test"
+  , preprocessorsKey = "preprocessors"
   , targetMarkdownPaths = [targetPath]
   }
 
@@ -101,27 +101,31 @@ author: YAMAMOTO Yuji
 date: April 16, 2020
 canonical-url:
 qiita-tags: tag1:1.1 tag2:1.2
+preprocessors:
+- s/  $//
 ...
 ---
 
 Test of surrogate pair: 𠮷野家は美味しい
-Yoshino-ya is good!
+Yoshino-ya  is  good!
 |]
 
 
-urlPlaceholderEmptyUpdated :: T.Text
-urlPlaceholderEmptyUpdated = [nowdoc|
+urlPlaceholderUpdated :: T.Text
+urlPlaceholderUpdated = [nowdoc|
 ---
 title: 𠮷野家に行ってきました
 author: YAMAMOTO Yuji
 date: April 16, 2020
 canonical-url: https://qiita.example.com/article1
 qiita-tags: tag1:1.1 tag2:1.2
+preprocessors:
+- s/  $//
 ...
 ---
 
 Test of surrogate pair: 𠮷野家は美味しい
-Yoshino-ya is good!
+Yoshino-ya  is  good!
 |]
 
 
@@ -133,11 +137,13 @@ author: YAMAMOTO Yuji
 date: April 16, 2020
 canonical-url: qiita
 qiita-tags: tag1:1.1 tag2:1.2
+preprocessors:
+- s/  $//
 ...
 ---
 
 Test of surrogate pair: 𠮷野家は美味しい
-Yoshino-ya is good!
+Yoshino-ya  is  good!
 |]
 
 
@@ -165,13 +171,15 @@ author: YAMAMOTO Yuji
 date: April 16, 2020
 canonical-url: https://qiita.com/user_id/items/article2/
 qiita-tags: tag1:2.0 tag2:3.1 tag3
+preprocessors:
+- s/  $//
 ...
 ---
 
 (Updated)
 
 Test of surrogate pair: 𠮷野家は超美味しい
-Yoshino-ya is so good!
+Yoshino-ya  is  so good!
 |]
 
 
@@ -205,31 +213,32 @@ spec =
               . mainWith testEnv
               $ testArgumentsAgainst targetPath
 
-          itShouldUploadsArticleAndWriteTheUrlReturnedByQiita
-            :: HasCallStack => FilePath -> Spec
-          itShouldUploadsArticleAndWriteTheUrlReturnedByQiita filePath =
-            it "uploads the article, write the URL returned by Qiita" $ do
-              let fsUpdated = M.insert filePath urlPlaceholderEmptyUpdated initialFs
+      describe "Given a markdown file including a line matched the --url-placeholder option" $ do
+        describe "the URL in the matched line is empty" $
+          it "do nothing" $ do
+            let uds = mkInitialUploadDestinationState articleIds
+                (fsActual, udsActual, result) = subject "urlPlaceholderEmpty"
+            either expectationFailure return result
+            fsActual `shouldBe` initialFs
+            udsActual `shouldBe` uds
 
-                  udsUpdated = M.fromList [(articleId1, Just article), (articleId2, Nothing)]
-                  article = Article body tags title
-                  body = "Test of surrogate pair: 𠮷野家は美味しい\nYoshino-ya is good!"
-                  tags = [Tag "tag1" ["1.1"], Tag "tag2" ["1.2"]]
-                  title = "𠮷野家に行ってきました"
+        describe "the URL in the matched line is just 'qiita'" $
+          it "uploads the article, write the URL returned by Qiita" $ do
+            let filePath = "urlPlaceholderOnlyQiita"
+                fsUpdated = M.insert filePath urlPlaceholderUpdated initialFs
 
-                  (fsActual, udsActual, result) = subject filePath
-              result `shouldBe` Right ()
-              fsActual `shouldBe` fsUpdated
-              udsActual `shouldBe` udsUpdated
+                udsUpdated = M.fromList [(articleId1, Just article), (articleId2, Nothing)]
+                article = Article body tags title
+                body = "Test of surrogate pair: 𠮷野家は美味しい\nYoshino-ya  is  good!"
+                tags = [Tag "tag1" ["1.1"], Tag "tag2" ["1.2"]]
+                title = "𠮷野家に行ってきました"
 
-      context "Given a markdown file including a line matched the --url-placeholder option" $ do
-        context "the URL in the matched line is empty" $
-          itShouldUploadsArticleAndWriteTheUrlReturnedByQiita "urlPlaceholderEmpty"
+                (fsActual, udsActual, result) = subject filePath
+            either expectationFailure return result
+            udsActual `shouldBe` udsUpdated
+            fsActual `shouldBe` fsUpdated
 
-        context "the URL in the matched line is just 'qiita'" $
-          itShouldUploadsArticleAndWriteTheUrlReturnedByQiita "urlPlaceholderOnlyQiita"
-
-        context "the URL in the matched line is invalid" $
+        describe "the URL in the matched line is invalid" $
           it "throws an error without updating anything" $ do
             let uds = mkInitialUploadDestinationState articleIds
                 (fsActual, udsActual, result) = subject "urlPlaceholderInvalid"
@@ -237,22 +246,22 @@ spec =
             udsActual `shouldBe` uds
             result `shouldSatisfy` isLeft
 
-        context "the URL in the matched line is filled with the URL with an articleId." $
+        describe "the URL in the matched line is filled with the URL with an articleId." $
           it "updates the exisiting article on Qiita" $ do
             let udsUpdated = M.fromList [(articleId1, Nothing), (articleId2, Just article)]
                 article = Article body tags title
-                body = "(Updated)\n\nTest of surrogate pair: 𠮷野家は超美味しい\nYoshino-ya is so good!"
+                body = "(Updated)\n\nTest of surrogate pair: 𠮷野家は超美味しい\nYoshino-ya  is  so good!"
                 tags = [Tag "tag1" ["2.0"], Tag "tag2" ["3.1"], Tag "tag3" []]
                 title = "𠮷野家に行ってきました (Updated)"
                 (fsActual, udsActual, result) = subject "urlPlaceholderFilled"
-            result `shouldBe` Right ()
+            either expectationFailure return result
             fsActual `shouldBe` initialFs
             udsActual `shouldBe` udsUpdated
 
-      context "Given a markdown file NOT including a line matched the --url-placeholder option" $
-          it "do nothing" $ do
-            let uds = mkInitialUploadDestinationState articleIds
-                (fsActual, udsActual, result) = subject "noUrlPlaceholderLine"
-            result `shouldBe` Right ()
-            fsActual `shouldBe` initialFs
-            udsActual `shouldBe` uds
+      describe "Given a markdown file NOT including a line matched the --url-placeholder option" $
+        it "do nothing" $ do
+          let uds = mkInitialUploadDestinationState articleIds
+              (fsActual, udsActual, result) = subject "noUrlPlaceholderLine"
+          either expectationFailure return result
+          fsActual `shouldBe` initialFs
+          udsActual `shouldBe` uds

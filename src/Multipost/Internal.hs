@@ -1,30 +1,53 @@
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 
 module Multipost.Internal
   ( Action (..)
+  , splitMetadata
   , decideWhatToDoWith
-  , extractTitle
-  , extractTags
-  , dropMetadata
+  , runPreprocessors
   , replaceUrlField
   ) where
 
 import           Control.Exception.Safe (throwString)
+import           Control.Monad          (foldM)
 import           Control.Monad.Catch    (MonadThrow)
+import           Control.Monad.Result   (result)
 import           Data.Bifunctor         (second)
-import           Data.Either.Result     (result, toEither)
+import qualified Data.Reflection        as R
 import qualified Data.Text              as T
-import           Data.Traversable       (for)
+import qualified Data.Text.Encoding     as TE
+import           Data.Void              (Void)
+import qualified Data.Yaml              as Y
+import qualified Text.Megaparsec        as M
+import qualified Text.Megaparsec.Char   as MC
 import           Text.RE.Replace        (Capture (Capture, captureLength, captureOffset),
                                          capturedText, matchCaptures)
-import           Text.RE.TDFA           (SimpleREOptions (BlockSensitive, MultilineSensitive),
-                                         makeRegexWith, makeSearchReplaceWith,
-                                         re, (?=~), (?=~/))
+import           Text.RE.TDFA           (SimpleREOptions (MultilineSensitive),
+                                         compileSearchReplaceWith,
+                                         makeRegexWith, re, (*=~/), (?=~),
+                                         (?=~/))
+import           Text.RE.TDFA.Text      (escapeREString)
 
-import           Multipost.Types
+import           Multipost.Types        (Arguments, ArticleId, Metadata,
+                                         Preprocessor (..))
 
-import           Debug.Trace
+
+splitMetadata :: MonadThrow m => Arguments -> FilePath -> T.Text -> m (Metadata, T.Text)
+splitMetadata args path contents = do
+  (metaContents, left) <-  either (throwString . M.errorBundlePretty) return $ M.runParser p path contents
+  meta <- R.give args $ Y.decodeThrow . TE.encodeUtf8 $ T.pack metaContents
+  return (meta, left)
+ where
+  p :: M.Parsec Void T.Text (String, T.Text)
+  p = do
+    _ <- MC.string "---"
+    _ <- MC.eol
+    (,)
+      <$> M.manyTill M.anySingle (M.try (MC.eol *> MC.string "---" *> MC.eol))
+      <*> M.takeRest
 
 
 data Action =
@@ -32,91 +55,56 @@ data Action =
   deriving (Eq, Show)
 
 
-decideWhatToDoWith :: MonadThrow m => UserRegex -> T.Text -> m (Maybe Action)
-decideWhatToDoWith urlPlaceholderReStr entire = do
-  urlPlaceholderRe <- result throwString return $ makeRegexWith MultilineSensitive urlPlaceholderReStr
-  let mCaptureUrlPlaceholder = matchCaptures $ entire ?=~ urlPlaceholderRe
-  for mCaptureUrlPlaceholder $ \(_allMatch, captures) ->
-    case captures of
-        [theOnlyCapture] -> do
-          let maybeUrl = T.strip $ capturedText theOnlyCapture
-          if T.null maybeUrl || maybeUrl == "qiita"
-            then return $ PostNew theOnlyCapture
-            else do
-              let captureArticleUrl =
-                    matchCaptures $ traceShowId maybeUrl ?=~ [re|https://qiita.com/[^/]+/items/([^/]+)|]
-              case traceShowId captureArticleUrl of
-                  Just (_url, [itemId]) ->
-                    return . PatchExisting $ capturedText itemId
-                  Just (_, other) ->
-                    throwString
-                      $ "Assertion failure: capturing more than one itemId or none: "
-                      ++ show other
-                  Nothing ->
-                    throwString
-                      $ "Unexpected URL placeholder value extracted: "
-                      ++ show maybeUrl ++ " is neither just \"qiita.com\" nor a URL of an item on qiita!"
-        _ ->
-          throwString
-            $ "The --url-placeholder option must capture *only one* URL of the article. "
-            ++ "But \"" ++ T.unpack urlPlaceholderReStr ++ "\" doesn't!"
+decideWhatToDoWith :: MonadThrow m => T.Text -> T.Text -> T.Text -> m Action
+decideWhatToDoWith entireContents canonicalUrlKey canonicalUrlContents =
+  if canonicalUrlContents == "qiita"
+    then do
+      let qs = "[\"']?"
+          ss = "[ \t　]*" -- NOTE: \s doesn't seem available in the regex package
+          reStr =
+              "^"
+            ++ qs
+            ++ escapeREString (T.unpack canonicalUrlKey)
+            ++ qs
+            ++ ":"
+            ++ ss
+            ++ qs
+            ++ "("
+            ++ escapeREString (T.unpack canonicalUrlContents)
+            ++ ")"
+            ++ qs
+            ++ ss
+            ++ "$"
+      regex <- result throwString return
+        $ makeRegexWith MultilineSensitive reStr
+      let captureUrlPlaceholder = matchCaptures $ entireContents ?=~ regex
+      case captureUrlPlaceholder of
+          Just (_, [matchedCanonicalUrlContents]) ->
+            return . PostNew $ matchedCanonicalUrlContents
+          other ->
+            throwString $ "Assertion failure: " ++ show other
+    else do
+      let captureArticleUrl =
+            matchCaptures $ canonicalUrlContents ?=~ [re|https://qiita.com/[^/]+/items/([^/]+)|]
+      case captureArticleUrl of
+          Just (_url, [itemId]) ->
+            return . PatchExisting $ capturedText itemId
+          _other ->
+            throwString $ "Invalid canonical URL: " ++ show canonicalUrlContents
 
 
-extractTitle :: MonadThrow m => FilePath -> UserRegex -> T.Text -> m T.Text
-extractTitle path titleReStr entire = do
-  titleRe <- result throwString return $ makeRegexWith MultilineSensitive titleReStr
-  let mCaptureTitle = matchCaptures $ entire ?=~ titleRe
-  case mCaptureTitle of
-      Just (_allMatch, [theOnlyCapture]) ->
-        return . T.strip $ capturedText theOnlyCapture
-      Just (_allMatch, _other) ->
-        throwString
-          $ "The --title option must capture *only one* title of " ++ path ++ ". "
-          ++ "But \"" ++ T.unpack titleReStr ++ "\" doesn't!"
-      Nothing ->
-        throwString
-          $ "The --title option didn't match with the content of " ++ path ++ "!"
-
-
-extractTags :: MonadThrow m => FilePath -> UserRegex -> T.Text -> m [Tag]
-extractTags path tagsReStr entire = do
-  tagsRe <- result throwString return $ makeRegexWith MultilineSensitive tagsReStr
-  let mCaptureTags = matchCaptures $ entire ?=~ tagsRe
-  case mCaptureTags of
-      Just (_allMatch, [theOnlyCapture]) ->
-        return . parseQiitaTags . T.strip $ capturedText theOnlyCapture
-      Just (_allMatch, _other) ->
-        throwString
-          $ "The --tags option must capture *only one* tags of " ++ path ++ ". "
-          ++ "But \"" ++ T.unpack tagsReStr ++ "\" doesn't!"
-      Nothing ->
-        throwString
-          $ "The --tags option didn't match with the content of " ++ path ++ "!"
-
-
-parseQiitaTags :: T.Text -> [Tag]
-parseQiitaTags =
-  map
-    ( uncurry Tag
-      . second
-        ( filter (not . T.null)
-          . T.split (== ',')
-          . T.drop 1 -- Drop the colon
-        )
-      . T.break (== ':'))
-    . T.words
-
-
-dropMetadata :: MonadThrow m => UserRegex -> T.Text -> m T.Text
-dropMetadata metadataReStr entire = do
-  let eMetadataSR = makeSearchReplaceWith BlockSensitive metadataReStr ""
-  case toEither eMetadataSR of
-      Right metadataSR -> return . T.strip $ entire ?=~/ metadataSR
-      Left emsg        -> throwString emsg
+runPreprocessors :: MonadThrow m => [Preprocessor] -> T.Text -> m T.Text
+runPreprocessors = flip $ foldM f
+ where
+  f body Preprocessor { preprocessorRe, preprocessorReplacement, preprocessorReOpts, preprocessorGlobal } = do
+    sr <- result throwString return $
+      compileSearchReplaceWith preprocessorReOpts preprocessorRe preprocessorReplacement
+    let op = if preprocessorGlobal then (*=~/) else (?=~/)
+    return $ body `op` sr
 
 
 replaceUrlField :: Capture T.Text -> T.Text -> T.Text -> T.Text
 replaceUrlField Capture { captureOffset = off, captureLength = len } url entire =
-  beforePlaceholder <> " " <> url <> afterPlaceholder
+  beforePlaceholder <> url <> afterPlaceholder
  where
   (beforePlaceholder, afterPlaceholder) = second (T.drop len) $ T.splitAt off entire

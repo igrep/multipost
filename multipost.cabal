@@ -7,8 +7,8 @@ homepage:            https://github.com/igrep/multipost
 license:             Apache-2.0
 license-file:        LICENSE
 author:              YAMAMOTO Yuji
-maintainer:          whosekiteneverfly@gmail.com
-copyright:           2020 YAMAMOTO Yuji
+maintainer:          igrep@n.email.ne.jp
+copyright:           2021 YAMAMOTO Yuji
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
@@ -22,25 +22,28 @@ common common
 
 common common-executable
   build-depends:       multipost
-  ghc-options:         -threaded -rtsopts
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
 
 library
   import:              common
   hs-source-dirs:      src
   exposed-modules:     Multipost
+                       Multipost.Config
                        Multipost.Options
                        Multipost.Types
                        Multipost.UploadDestination.Qiita
   other-modules:       Multipost.UploadDestination.Qiita.Types
                      , Multipost.Internal
   build-depends:       aeson
-                     , bytestring
+                     , autodocodec
+                     , envparse-applicative
                      , deriveJsonNoPrefix
                      , either-result
                      , generic-lens
                      , http-client-tls
                      , optparse-applicative
                      , megaparsec
+                     , monad-throw-exit
                      , safe-exceptions
                      , servant
                      , servant-client
@@ -52,6 +55,8 @@ executable multipost
   hs-source-dirs:      app
   main-is:             Main.hs
   build-depends:       hspec
+  build-depends:       load-env >= 0.2.1
+                     , envparse-applicative
 
 test-suite multipost-test
   import:              common, common-executable
@@ -59,8 +64,7 @@ test-suite multipost-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules:       MultipostSpec
-  build-depends:       hspec
-                     , sydtest >= 0.5.0.0
+  build-depends:       sydtest >= 0.5.0.0
                      , containers
                      , fakefs >= 0.3.0.0
                      , mtl

@@ -1,36 +1,32 @@
 {-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE NamedFieldPuns       #-}
-{-# LANGUAGE TemplateHaskell      #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE StrictData           #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Multipost.Types
   ( module Multipost.UploadDestination.Qiita.Types
   , Arguments (..)
+  , Config (..)
   , Metadata (..)
   , Preprocessor (..)
-  , Article (..)
-  , UploadDestination (..)
-  , AccessToken
-  , ArticleId
-  , PostResult
   , Env (..)
   , YamlKey
-  , parseQiitaTags
   ) where
 
 
 import           Data.Aeson                              (FromJSON (parseJSON),
                                                           withObject, withText,
                                                           (.:), (.:?))
-import           Data.Aeson.DeriveNoPrefix               (deriveJsonNoTypeNamePrefix)
-import           Data.Bifunctor                          (Bifunctor (second),
-                                                          first)
+import           Data.Bifunctor                          (first)
 import           Data.Reflection                         (Given (given))
 import qualified Data.Text                               as T
+import qualified Data.Text.Lazy                          as TL
 import           Data.Void                               (Void)
+import qualified EnvParse.Applicative                    as EA
 import           Prelude                                 hiding (readFile,
                                                           writeFile)
-import           Servant.Client                          (ClientError)
 import qualified Text.Megaparsec                         as M
 import qualified Text.RE.TDFA.Text                       as Re
 
@@ -38,25 +34,24 @@ import           Data.Maybe                              (fromMaybe)
 import           Multipost.UploadDestination.Qiita.Types
 
 
-data Article = Article
-  { articleBody  :: !T.Text
-  , articleTags  :: ![Tag]
-  , articleTitle :: !T.Text
-  } deriving (Eq, Show)
-
-$(deriveJsonNoTypeNamePrefix ''Article)
-
-
 type YamlKey = T.Text
 
 
 data Arguments = Arguments
-  { canonicalUrlKey     :: !YamlKey
-  , titleKey            :: !YamlKey
-  , tagsKey             :: !YamlKey
-  , preprocessorsKey    :: !YamlKey
-  , qiitaAccessToken    :: !T.Text
-  , targetMarkdownPaths :: ![FilePath]
+  { printExampleDotEnv  :: Bool
+  , dotEnvFiles         :: [FilePath]
+  , targetMarkdownPaths :: [FilePath]
+  } deriving (Eq, Show)
+
+
+data Config = Config
+  { qiitaAccessToken    :: QiitaAccessToken
+  , zennRepository      :: FilePath
+  , preprocessorsKey    :: Maybe YamlKey
+  , qiitaTagsKey        :: Maybe YamlKey
+  , canonicalUrlKey     :: YamlKey
+  , canonicalServiceKey :: YamlKey
+  , titleKey            :: YamlKey
   } deriving Show
 
 
@@ -84,10 +79,10 @@ parseSubstituteCommand =
     -- > Any character other than backslash or <newline> can be used instead of a slash to delimit the BRE and the replacement.
     -- But I add "s" to the exception to avoid ambiguity with the initial 's' character.
     delim <-
-      M.label "Any character except '\\', '\\n', and 's'" $ M.noneOf "s\\\n"
+      M.label "Any characters except '\\', '\\n', and 's'" $ M.noneOf ("s\\\n" :: String)
     preprocessorRe <- M.manyTill (M.anySingleBut delim) (M.single delim)
     preprocessorReplacement <- M.manyTill (M.anySingleBut delim) (M.single delim)
-    optsWithG <- M.many $ M.oneOf "gim"
+    optsWithG <- M.many $ M.oneOf ("gim" :: String)
     let preprocessorGlobal = 'g' `elem` optsWithG
         preprocessorReOpts =
           case ('m' `elem` optsWithG, 'i' `elem` optsWithG) of
@@ -103,61 +98,50 @@ parseSubstituteCommand =
       }
 
 
-parseQiitaTags :: T.Text -> [Tag]
-parseQiitaTags =
-  map
-    ( uncurry Tag
-      . second
-        ( filter (not . T.null)
-          . T.split (== ',')
-          . T.drop 1 -- Drop the colon
-        )
-      . T.break (== ':'))
-    . T.words
-
-
-newtype CommaSeparatedTags =
-  CommaSeparatedTags { fromCommaSeparatedTag :: [Tag] }
-  deriving (Eq, Show)
-
-instance FromJSON CommaSeparatedTags where
-  parseJSON = withText "CommaSeparatedTags"
-    $ pure . CommaSeparatedTags . parseQiitaTags
-
-
 data Metadata = Metadata
-  { metadataTitle         :: !T.Text
-  , metadataTags          :: ![Tag]
-  , metadataPreprocessors :: ![Preprocessor]
-  , metadataCanonicalUrl  :: !(Maybe T.Text)
+  { metadataTitle            :: T.Text
+  , metadataQiitaTags        :: [QiitaTag]
+  , metadataPreprocessors    :: [Preprocessor]
+  , metadataCanonicalUrl     :: Maybe T.Text
+  , metadataCanonicalService :: Maybe Service
   } deriving Show
 
-instance Given Arguments => FromJSON Metadata where
-  parseJSON = withObject "Metadata" $ \o -> do
-    let Arguments { canonicalUrlKey, titleKey, tagsKey, preprocessorsKey } = given
+instance Given Config => FromJSON Metadata where
+  parseJSON = withObject "Metadata" $ \o ->
     Metadata
       <$> o .: titleKey
-      <*> (maybe [] fromCommaSeparatedTag <$> o .:? tagsKey)
-      <*> (fromMaybe [] <$> o .:? preprocessorsKey)
+      <*> qiitaTagsOf o
+      <*> preprocessorsOf o
       <*> o .:? canonicalUrlKey
+      <*> o .:? canonicalServiceKey
+   where
+    Config { canonicalUrlKey, canonicalServiceKey, preprocessorsKey, titleKey, qiitaTagsKey } = given
+
+    qiitaTagsOf o =
+      case qiitaTagsKey of
+          Nothing  -> pure []
+          Just key -> maybe [] fromCommaSeparatedTag <$> o .:? key
+
+    preprocessorsOf o =
+      case preprocessorsKey of
+          Nothing  -> pure []
+          Just key -> fromMaybe [] <$> o .:? key
 
 
 data Env m = Env
-  { qiita     :: !(UploadDestination m)
-  , logDebug  :: String -> m ()
-  , readFile  :: FilePath -> m T.Text
-  , writeFile :: FilePath -> T.Text -> m ()
+  { qiitaActions :: QiitaActions m
+  , logDebug     :: String -> m ()
+  , readFile     :: FilePath -> m T.Text
+  , writeFile    :: FilePath -> T.Text -> m ()
+  , loadDotEnv   :: FilePath -> m ()
+  , decodeEnv    :: EA.ToEnvVarName -> EA.CodecEnv Config -> m Config
+  , puts         :: TL.Text -> m ()
   }
 
-type ArticleId = T.Text
+data Service = Qiita | Zenn deriving (Eq, Show)
 
-type AccessToken = T.Text
-
--- NOTE: If I create a new upload destination, I should create a separate type for each upload destination
-type PostResult = ItemResponse
-
-
-data UploadDestination m = UploadDestination
-  { postArticle  :: Article -> m (Either ClientError PostResult)
-  , patchArticle :: ArticleId -> Article -> m (Either ClientError ())
-  }
+instance FromJSON Service where
+  parseJSON = withText "Service" $ \case
+      "qiita" -> pure Qiita
+      "zenn"  -> pure Zenn
+      other -> fail $ "Unexpected service: " ++ T.unpack other

@@ -18,9 +18,16 @@ packages:
       sha256: ddf70764317c550e560a91e93f719bfeb15ea65b87cdd29b9bc9f0b9f9e4dfee
   original:
     hackage: sydtest-0.5.0.0
+- completed:
+    hackage: monad-throw-exit-0.1.0.0@sha256:a41300207b9676da44fa4921f318a0d7ff74b5013dfae8de055e8cdb1ac7b8bb,1650
+    pantry-tree:
+      size: 384
+      sha256: ffbaa0440dd8045042ed76d6db9929ec35a784ec209baad1e85f1ff18858a33f
+  original:
+    hackage: monad-throw-exit-0.1.0.0
 snapshots:
 - completed:
-    size: 586286
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/16.yaml
-    sha256: cdead65fca0323144b346c94286186f4969bf85594d649c49c7557295675d8a5
-  original: lts-18.16
+    size: 611690
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2021/12/18.yaml
+    sha256: d588b09b01c2b9ed1ea2880d70742f67c7ae775b3e032a44aa3beac8774fc99c
+  original: nightly-2021-12-18

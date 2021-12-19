@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: lts-18.16
+resolver: nightly-2021-12-18
 #allow-newer: true
 
 # User packages to be built.
@@ -43,6 +43,8 @@ packages:
 extra-deps:
 - either-result-0.3.1.0@sha256:75fd6c67b49a0bffcb56088a288f584723b96bc0f2b794ea9fd08ec225dcacae,2346
 - sydtest-0.5.0.0
+- monad-throw-exit-0.1.0.0
+- ./envparse-applicative
 
 # Override default flag values for local packages and extra-deps
 flags:

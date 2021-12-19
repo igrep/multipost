@@ -16,6 +16,7 @@ import           Data.Bifunctor             (first)
 import           Data.Either                (isLeft)
 import qualified Data.Map.Strict            as M
 import qualified Data.Text                  as T
+import qualified Data.Text.Lazy             as TL
 import           Test.FileSystem.Fake       (FileSystem, FileSystemT, readPath,
                                              runFileSystemT, writePath)
 import           Test.Syd
@@ -32,7 +33,7 @@ main :: IO ()
 main = sydTest spec
 
 
-type UploadDestinationState = M.Map ArticleId (Maybe Article)
+type UploadDestinationState = M.Map QiitaArticleId (Maybe QiitaArticle)
 
 
 type TestM = CatchT (FileSystemT T.Text (State UploadDestinationState))
@@ -49,36 +50,44 @@ runTestM action =
    in (fs, uds, first (show . SomeException) result)
 
 
-mkInitialUploadDestinationState :: [ArticleId] -> UploadDestinationState
+mkInitialUploadDestinationState :: [QiitaArticleId] -> UploadDestinationState
 mkInitialUploadDestinationState = M.fromList . map (\articleId -> (articleId, Nothing))
 
 
 testEnv :: Env TestM
 testEnv = Env
-  { qiita = UploadDestination { postArticle, patchArticle }
+  { qiitaActions = QiitaActions { postArticle, patchArticle }
   , logDebug = traceM
+  , puts = traceM . TL.unpack
+  , loadDotEnv = \_ -> return ()
+  , decodeEnv = \_ _ -> return Config
+      { canonicalUrlKey = "canonical-url"
+      , canonicalServiceKey = "canonical-service"
+      , zennRepository = "zenn"
+      , titleKey = "title"
+      , qiitaTagsKey = Just "qiita-tags"
+      , qiitaAccessToken = "qiitaAccessToken should not be used in test"
+      , preprocessorsKey = Just "preprocessors"
+      }
   , readFile = readPath
   , writeFile = writePath
   }
  where
-  postArticle article = do
+  postArticle _accessToken article = do
     itemResponseId <- lift . lift . gets $ fst . M.findMin
     lift . lift . modify' . M.insert itemResponseId $ Just article
     let itemResponseUrl = "https://qiita.example.com/" <> itemResponseId
     return $ Right ItemResponse { itemResponseId, itemResponseUrl }
 
-  patchArticle articleId article = do
+  patchArticle _accessToken articleId article = do
     lift . lift . modify' . M.insert articleId $ Just article
     return $ Right ()
 
 
 testArgumentsAgainst :: FilePath -> Arguments
 testArgumentsAgainst targetPath = Arguments
-  { canonicalUrlKey = "canonical-url"
-  , titleKey = "title"
-  , tagsKey = "qiita-tags"
-  , qiitaAccessToken = "qiitaAccessToken should not be used in test"
-  , preprocessorsKey = "preprocessors"
+  { printExampleDotEnv = False
+  , dotEnvFiles = ["not_used.env"]
   , targetMarkdownPaths = [targetPath]
   }
 
@@ -100,6 +109,7 @@ title: 𠮷野家に行ってきました
 author: YAMAMOTO Yuji
 date: April 16, 2020
 canonical-url:
+canonical-service: qiita
 qiita-tags: tag1:1.1 tag2:1.2
 preprocessors:
 - s/  $//
@@ -118,6 +128,7 @@ title: 𠮷野家に行ってきました
 author: YAMAMOTO Yuji
 date: April 16, 2020
 canonical-url: https://qiita.example.com/article1
+canonical-service: qiita
 qiita-tags: tag1:1.1 tag2:1.2
 preprocessors:
 - s/  $//
@@ -136,6 +147,7 @@ title: 𠮷野家に行ってきました
 author: YAMAMOTO Yuji
 date: April 16, 2020
 canonical-url: qiita
+canonical-service: qiita
 qiita-tags: tag1:1.1 tag2:1.2
 preprocessors:
 - s/  $//
@@ -154,6 +166,7 @@ title: 𠮷野家に行ってきました
 author: YAMAMOTO Yuji
 date: April 16, 2020
 canonical-url: https://qiita.com/no_item_id/
+canonical-service: qiita
 qiita-tags: tag1:1.1 tag2:1.2
 ...
 ---
@@ -170,6 +183,7 @@ title: 𠮷野家に行ってきました (Updated)
 author: YAMAMOTO Yuji
 date: April 16, 2020
 canonical-url: https://qiita.com/user_id/items/article2/
+canonical-service: qiita
 qiita-tags: tag1:2.0 tag2:3.1 tag3
 preprocessors:
 - s/  $//
@@ -228,9 +242,9 @@ spec =
                 fsUpdated = M.insert filePath urlPlaceholderUpdated initialFs
 
                 udsUpdated = M.fromList [(articleId1, Just article), (articleId2, Nothing)]
-                article = Article body tags title
+                article = QiitaArticle body tags title
                 body = "Test of surrogate pair: 𠮷野家は美味しい\nYoshino-ya  is  good!"
-                tags = [Tag "tag1" ["1.1"], Tag "tag2" ["1.2"]]
+                tags = [QiitaTag "tag1" ["1.1"], QiitaTag "tag2" ["1.2"]]
                 title = "𠮷野家に行ってきました"
 
                 (fsActual, udsActual, result) = subject filePath
@@ -249,9 +263,9 @@ spec =
         describe "the URL in the matched line is filled with the URL with an articleId." $
           it "updates the exisiting article on Qiita" $ do
             let udsUpdated = M.fromList [(articleId1, Nothing), (articleId2, Just article)]
-                article = Article body tags title
+                article = QiitaArticle body tags title
                 body = "(Updated)\n\nTest of surrogate pair: 𠮷野家は超美味しい\nYoshino-ya  is  so good!"
-                tags = [Tag "tag1" ["2.0"], Tag "tag2" ["3.1"], Tag "tag3" []]
+                tags = [QiitaTag "tag1" ["2.0"], QiitaTag "tag2" ["3.1"], QiitaTag "tag3" []]
                 title = "𠮷野家に行ってきました (Updated)"
                 (fsActual, udsActual, result) = subject "urlPlaceholderFilled"
             either expectationFailure return result

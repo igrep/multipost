@@ -31,14 +31,14 @@ import           Text.RE.TDFA           (SimpleREOptions (MultilineSensitive),
                                          (?=~/))
 import           Text.RE.TDFA.Text      (escapeREString)
 
-import           Multipost.Types        (Arguments, ArticleId, Metadata,
-                                         Preprocessor (..))
+import           Multipost.Types        (Config, Metadata, Preprocessor (..),
+                                         QiitaArticleId)
 
 
-splitMetadata :: MonadThrow m => Arguments -> FilePath -> T.Text -> m (Metadata, T.Text)
-splitMetadata args path contents = do
+splitMetadata :: MonadThrow m => Config -> FilePath -> T.Text -> m (Metadata, T.Text)
+splitMetadata config path contents = do
   (metaContents, left) <-  either (throwString . M.errorBundlePretty) return $ M.runParser p path contents
-  meta <- R.give args $ Y.decodeThrow . TE.encodeUtf8 $ T.pack metaContents
+  meta <- R.give config $ Y.decodeThrow . TE.encodeUtf8 $ T.pack metaContents
   return (meta, left)
  where
   p :: M.Parsec Void T.Text (String, T.Text)
@@ -51,7 +51,7 @@ splitMetadata args path contents = do
 
 
 data Action =
-  PostNew (Capture T.Text) | PatchExisting ArticleId
+  PostNew (Capture T.Text) | PatchExisting QiitaArticleId
   deriving (Eq, Show)
 
 

@@ -16,30 +16,30 @@ main = do
   hSetEcho stdin False
   accessToken <- T.getLine
 
-  qiita <- mkQiitaUploadDestination accessToken
+  QiitaActions { postArticle, patchArticle } <- mkQiitaActions
   (command : left) <- getArgs
   case command of
       "items:post" -> do
-        let articleBody =
+        let qiitaArticleBody =
               "# Qiita APIテスト用新規投稿の見出し\nQiita APIテスト用新規投稿の本文"
-            articleTags =
-              [ Tag "QiitaAPI" ["2"]
-              , Tag "WebAPI" []
+            qiitaArticleTags =
+              [ QiitaTag "QiitaAPI" ["2"]
+              , QiitaTag "WebAPI" []
               ]
-            articleTitle = "Qiita APIテスト用新規投稿"
-            article = Article { articleBody, articleTags, articleTitle }
-        print =<< postArticle qiita article
+            qiitaArticleTitle = "Qiita APIテスト用新規投稿"
+            qiitaArticle = QiitaArticle { qiitaArticleBody, qiitaArticleTags, qiitaArticleTitle }
+        print =<< postArticle accessToken qiitaArticle
       "items:patch" -> do
-        let articleBody =
+        let qiitaArticleBody =
               "# Qiita APIテスト用記事（更新済み）の見出し\nQiita APIテスト用記事（更新済み）の本文"
-            articleTags =
-              [ Tag "QiitaAPI" ["2.1", "1.1"]
-              , Tag "WebAPI" ["1.3", "1.5"]
+            qiitaArticleTags =
+              [ QiitaTag "QiitaAPI" ["2.1", "1.1"]
+              , QiitaTag "WebAPI" ["1.3", "1.5"]
               ]
-            articleTitle = "Qiita APIテスト用記事（更新済み）"
-            articleId = T.pack $ head left
-            article = Article { articleBody, articleTags, articleTitle }
-        print =<< patchArticle qiita articleId article
+            qiitaArticleTitle = "Qiita APIテスト用記事（更新済み）"
+            qiitaArticleId = T.pack $ head left
+            qiitaArticle = QiitaArticle { qiitaArticleBody, qiitaArticleTags, qiitaArticleTitle }
+        print =<< patchArticle accessToken qiitaArticleId qiitaArticle
       other ->
         fail $ "Unknown command: " ++ show other
 

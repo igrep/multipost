@@ -5,7 +5,7 @@
 
 module Multipost.UploadDestination.Qiita
   ( module Multipost.UploadDestination.Qiita.Types
-  , mkQiitaUploadDestination
+  , mkQiitaActions
   ) where
 
 
@@ -44,17 +44,17 @@ patchItem :: AuthorizationHeader -> ItemId -> PatchItemRequest -> ClientM ItemRe
 postItem :<|> patchItem = client api
 
 
-mkQiitaUploadDestination :: AccessToken -> IO (UploadDestination IO)
-mkQiitaUploadDestination accessToken = do
+mkQiitaActions :: IO (QiitaActions IO)
+mkQiitaActions = do
   clientEnv <- mkClientEnv <$> newTlsManager <*> parseBaseUrl "https://qiita.com/api/v2/"
   let run = (`runClientM` clientEnv)
 
-      postArticle Article { articleBody, articleTags, articleTitle } = do
+      postArticle accessToken QiitaArticle { qiitaArticleBody, qiitaArticleTags, qiitaArticleTitle } = do
         run . postItem ("Bearer " <> accessToken) $
-          PostItemRequest articleBody articleTags articleTitle False
+          PostItemRequest qiitaArticleBody qiitaArticleTags qiitaArticleTitle False
 
-      patchArticle articleId Article { articleBody, articleTags, articleTitle } =
+      patchArticle accessToken articleId QiitaArticle { qiitaArticleBody, qiitaArticleTags, qiitaArticleTitle } =
         run . void . patchItem ("Bearer " <> accessToken) articleId $
-          PatchItemRequest articleBody articleTags articleTitle
+          PatchItemRequest qiitaArticleBody qiitaArticleTags qiitaArticleTitle
 
-  return UploadDestination { postArticle, patchArticle }
+  return QiitaActions { postArticle, patchArticle }

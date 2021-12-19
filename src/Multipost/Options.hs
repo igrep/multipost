@@ -16,24 +16,27 @@ import           Multipost.Types
 
 parser :: Parser Arguments
 parser = do
-  canonicalUrlKey <-
-    strOption (long "canonical-url" <> metavar "YAML_KEY") <|> pure "canonical-url"
-  titleKey <-
-    strOption (long "title" <> metavar "YAML_KEY") <|> pure "title"
-  tagsKey <-
-    strOption (long "tags" <> metavar "YAML_KEY") <|> pure "qiitaTags"
-  preprocessorsKey <-
-    strOption (long "qiita-preprocessors" <> metavar "YAML_KEY") <|> pure "qiita-preprocessors"
-  qiitaAccessToken <-
-    strOption (long "qiita-access-token" <> metavar "QIITA_ACCESS_TOKEN")
-  targetMarkdownPaths <- many . strArgument $ metavar "FILES_TO_UPLOAD"
+  printExampleDotEnv <- switch
+    $ long "print-example-dot-env"
+    <> help "Print out an example .env file, then exit."
+  dotEnvFiles <-
+    fmap (defaultIfEmpty [".env", ".secret.env"])
+      . many
+      . strOption
+      $ long "dotenv"
+      <> help "Path to dotenv file(s) to modify the environment variables. Default \".env\" and \".secret.env\"."
+  targetMarkdownPaths <- many . strArgument
+    $ metavar "FILES_TO_UPLOAD"
+    <> help "Target markdown files to upload on Qiita or Zenn."
   pure Arguments {..}
+ where
+  defaultIfEmpty def vs = if null vs then def else vs
 
 
 parserInfo :: ParserInfo Arguments
 parserInfo = info
   (helper <*> parser)
-  (fullDesc <> header "Upload markdown file(s) onto Qiita")
+  (fullDesc <> header "Upload markdown file(s) onto Qiita or Zenn.")
 
 
 fromArgs :: IO Arguments
